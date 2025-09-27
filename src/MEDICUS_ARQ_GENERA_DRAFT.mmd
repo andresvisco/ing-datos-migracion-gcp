@@ -1,0 +1,8 @@
+flowchart TD
+    A[Usuarios] --> B[Load Balancer GCP]
+    B --> C[Instancias de Aplicacion Compute Engine o GKE]
+    C --> D[Base de Datos Cloud SQL o Firestore]
+    C --> E[Almacenamiento de Archivos Cloud Storage]
+    C --> F[Servicios de Autenticacion Identity Platform]
+    D --> G[Backup y Recuperacion Cloud Storage o Snapshots]
+    C --> H[Monitorizacion y Logging Cloud Monitoring o Logging]
