@@ -1,0 +1,78 @@
+---
+config:
+  layout: fixed
+  theme: neo
+---
+flowchart TD
+ subgraph ORCHESTRATION["Composer Airflow"]
+        O1(["Composer<br>Orquestador"])
+  end
+ subgraph BRONZE["BRONZE Raw Landing Zone"]
+        B1(["Dataflow<br>Ingesta RAW"])
+        B2(["GCS<br>Parquet/Avro"])
+        QA1(["Data Quality<br>Great Expectations"])
+        LOG1(["Logging & Monitoring"])
+  end
+ subgraph SILVER["SILVER Procesado Curado"]
+        S1(["Dataflow<br>Transformación"])
+        S2(["BigQuery<br>Tablas Silver"])
+        QA2(["Data Quality<br>Curado"])
+        LOG2(["Logging & Monitoring"])
+  end
+ subgraph GOLD["GOLD Analítica y Reporting"]
+        G1(["BigQuery<br>Tablas Gold"])
+        QA3(["Data Quality<br>Gold"])
+        LOG3(["Logging & Monitoring"])
+  end
+ subgraph CONTROL["Gobernanza y Control"]
+        MET(["Metadatos &amp; Lineage<br>Data Catalog"])
+        SEC(["Seguridad &amp; Auditoría<br>IAM, KMS"])
+        VER(["Versionado de Datos"])
+  end
+ subgraph s1["Conectores"]
+        n2["Communication Link"]
+  end
+    O1 -- Orquesta --> B1 & S1 & QA1 & QA2 & G1 & QA3
+    B1 -- Escribe RAW data --> B2
+    B2 -- Valida Calidad --> QA1
+    QA1 -- Logs --> LOG1
+    B2 -- Alimenta transformación --> S1
+    S1 -- Escribe datos curados --> S2
+    S1 -- Calidad Curado --> QA2
+    QA2 -- Logs --> LOG2
+    S2 -- Transformación GOLD --> G1
+    G1 -- Calidad Gold --> QA3
+    QA3 -- Logs --> LOG3
+    B2 -- Catalog --> MET
+    S2 -- Catalog --> MET
+    G1 -- Catalog --> MET
+    MET -- Policies --> SEC
+    B2 -- Versiona --> VER
+    S2 -- Versiona --> VER
+    G1 -- Versiona --> VER
+    n2 --> n1["MEDICUS<br>Source"] & B1
+    n1 L_n1_B1_0@-- Ingesta --> B1
+    n2@{ shape: com-link}
+    n1@{ shape: db}
+     O1:::orchestration
+     B1:::bronze
+     B2:::bronze
+     QA1:::bronze
+     LOG1:::bronze
+     S1:::silver
+     S2:::silver
+     QA2:::silver
+     LOG2:::silver
+     G1:::gold
+     QA3:::gold
+     LOG3:::gold
+     MET:::control
+     SEC:::control
+     VER:::control
+    classDef silver fill:#e2f4ea,stroke:#008c4a,stroke-width:2px
+    classDef gold fill:#fff8dc,stroke:#d4af37,stroke-width:2px
+    classDef control fill:#ede7f6,stroke:#7c43bd,stroke-width:2px
+    classDef bronze fill:#f4e2d8, stroke:#b36b00, stroke-width:2px
+    classDef orchestration fill:#def3fc, stroke:#176aa6, stroke-width:2px
+    classDef Conectores fill:#C8E6C9, color:#000000, stroke-width:2px, stroke-dasharray: 2, stroke:#000000
+    L_n1_B1_0@{ animation: slow }
