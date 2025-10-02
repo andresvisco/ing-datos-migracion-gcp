@@ -1,48 +1,55 @@
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, GoogleCloudOptions, StandardOptions, SetupOptions
-import csv
-import io
 from datetime import datetime
 
-# Cambia estos valores a los de tu proyecto/buckets/tabla
-PROJECT_ID = "analitica-de-conversaciones"
-BUCKET_INPUT = "gs://avlab-bronze-raw/raw/*.csv"
-BQ_TABLE = "analitica-de-conversaciones.silver.avlab_silver_table_curated"
+# Configuración del entorno dev según nomenclatura-gcp.md
+# PROJECT_ID: medicus-data-dataml-dev alineado con convención medicus-data-<entorno>
+PROJECT_ID = "medicus-data-dataml-dev"
+# BUCKET_INPUT: Archivos en formato Parquet desde Bronze Raw Landing Zone
+# Convención: medicus-data-bronze-raw-dev-uscentral1
+BUCKET_INPUT = "gs://medicus-data-bronze-raw-dev-uscentral1/raw/*.parquet"
+# BQ_TABLE: Dataset Silver según nomenclatura medicus_<layer>_<dominio>_<entorno>
+BQ_TABLE = "medicus-data-dataml-dev.medicus_silver_curated.table_curated"
 BQ_SCHEMA = "id:INTEGER,texto:STRING,fecha:TIMESTAMP"
 
-def parse_csv(line):
-    # Parsear una línea CSV y devolver un diccionario
-    reader = csv.reader([line])
-    for row in reader:
-        if len(row) != 3:
+def parse_parquet_record(record):
+    """
+    Procesa un registro de Parquet y devuelve un diccionario.
+    Los archivos Parquet ya vienen estructurados, por lo que no necesitamos parsear CSV.
+    Aplicamos validación mínima para asegurar integridad de datos.
+    """
+    try:
+        # Validación mínima: verificar campos requeridos
+        if not all(k in record for k in ['id', 'texto', 'fecha']):
             return None
-        try:
-            # Validación mínima
-            return {
-                'id': int(row[0]),
-                'texto': row[1],
-                'fecha': row[2]  # Suponiendo formato correcto YYYY-MM-DD HH:MM:SS
-            }
-        except Exception:
-            return None
+        return {
+            'id': int(record['id']),
+            'texto': str(record['texto']),
+            'fecha': record['fecha']  # Formato TIMESTAMP ya viene estructurado en Parquet
+        }
+    except Exception:
+        return None
 
 def run():
-    # Opciones del pipeline
+    # Opciones del pipeline - configuración para entorno dev
     options = PipelineOptions()
     google_cloud_options = options.view_as(GoogleCloudOptions)
     google_cloud_options.project = PROJECT_ID
-    google_cloud_options.job_name = "bronze-to-silver-mvp"
-    google_cloud_options.staging_location = f"gs://avlab-bronze-raw/staging"
-    google_cloud_options.temp_location = f"gs://avlab-bronze-raw/temp"
+    # Job name siguiendo convención: df-<pipeline>-<dominio>-<entorno>
+    google_cloud_options.job_name = "df-bronze-to-silver-dev"
+    # Staging y temp locations usando bucket bronze
+    google_cloud_options.staging_location = f"gs://medicus-data-bronze-raw-dev-uscentral1/staging"
+    google_cloud_options.temp_location = f"gs://medicus-data-bronze-raw-dev-uscentral1/temp"
     options.view_as(StandardOptions).runner = "DataflowRunner"
     options.view_as(SetupOptions).save_main_session = True
 
     with beam.Pipeline(options=options) as p:
         (p
-         | "Leer archivos CSV" >> beam.io.ReadFromText(BUCKET_INPUT, skip_header_lines=1)
-         | "Parsear CSV" >> beam.Map(parse_csv)
+         # Leer archivos Parquet desde Bronze Raw Landing Zone
+         | "Leer archivos Parquet" >> beam.io.ReadFromParquet(BUCKET_INPUT)
+         | "Parsear y validar" >> beam.Map(parse_parquet_record)
          | "Filtrar nulos" >> beam.Filter(lambda x: x is not None)
-         | "Escribir en BigQuery" >> beam.io.WriteToBigQuery(
+         | "Escribir en BigQuery Silver" >> beam.io.WriteToBigQuery(
                 BQ_TABLE,
                 schema=BQ_SCHEMA,
                 write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,

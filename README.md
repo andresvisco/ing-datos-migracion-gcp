@@ -93,9 +93,23 @@ Se han incorporado componentes de gobernanza esenciales:
 
 ## ▶️ Guía Rápida de Inicio
 
+### Recursos del Entorno Dev
+
+Los siguientes recursos están configurados para el entorno de desarrollo (dev), siguiendo la [Guía de Nomenclatura GCP](Documentacion/nomenclatura-gcp.md):
+
+* **PROJECT_ID:** `medicus-data-dataml-dev`
+* **BUCKET_BRONZE (GCS):** `medicus-data-bronze-raw-dev-uscentral1`
+* **BigQuery Instance:** `medicus-data-dataml-dev`
+* **Dataset Bronze:** `medicus-data-dataml-dev.medicus_bronze_raw_acumulado`
+* **Formato de archivos Bronze:** `Parquet` (recomendado para optimización de almacenamiento y consultas)
+* **Región:** `us-central1`
+
+### Pasos de Configuración
+
 1.  **Configuración de Entorno:**
     * Instalar `gcloud CLI`, `terraform`, y `python v3.x`.
     * Autenticarse con `gcloud auth application-default login`.
+    * Configurar proyecto: `gcloud config set project medicus-data-dataml-dev`
 2.  **Despliegue de Infraestructura (Terraform):**
     ```bash
     cd terraform

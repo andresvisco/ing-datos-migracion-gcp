@@ -44,6 +44,17 @@ Aplicar etiquetas (`labels`) comunes en los recursos que lo permitan:
 
 Reglas: los buckets son globales, validar unicidad y longitud. Para `region`, usar código corto (`us`, `us-central1`, `sa-east1`) según necesidad.
 
+### Formato de archivos recomendado
+
+Para la zona **Bronze Raw Landing Zone**, se recomienda utilizar formato **Parquet** en lugar de CSV por los siguientes beneficios:
+
+- **Almacenamiento optimizado:** Compresión columnar que reduce significativamente el espacio de almacenamiento
+- **Rendimiento de consultas:** Lectura eficiente al permitir leer solo las columnas necesarias
+- **Tipos de datos estructurados:** Preserva esquemas y tipos de datos nativos
+- **Compatibilidad:** Ampliamente soportado por Dataflow, BigQuery, Spark y herramientas de Big Data
+
+**Ejemplo:** Los archivos en `gs://medicus-data-bronze-raw-dev-uscentral1/raw/*.parquet` siguen esta práctica recomendada.
+
 ## BigQuery
 
 - **Datasets por capa**: `medicus_<layer>_<dominio>_<entorno>` → ej. `medicus_bronze_cli_prod`
@@ -98,6 +109,8 @@ Reglas: los buckets son globales, validar unicidad y longitud. Para `region`, us
 
 ## Ejemplo completo
 
+### Entorno Producción (prod)
+
 Para un pipeline que ingiere información de clientes (dominio `cli`) desde sistemas legacy a capa bronze y luego a silver en `prod`:
 
 | Recurso                        | Nombre sugerido                                         |
@@ -112,6 +125,22 @@ Para un pipeline que ingiere información de clientes (dominio `cli`) desde sist
 | Spanner database               | `db_cli_master`                                          |
 | Service account Dataflow       | `sa-df-cli-prod@medicus-data-prod.iam.gserviceaccount.com` |
 | Composer environment           | `cmp-data-prod`                                          |
+
+### Entorno Desarrollo (dev)
+
+Recursos configurados para el entorno de desarrollo siguiendo la misma convención:
+
+| Recurso                        | Nombre configurado                                       |
+|--------------------------------|----------------------------------------------------------|
+| Proyecto GCP                   | `medicus-data-dataml-dev`                                |
+| Bucket Bronze Raw              | `medicus-data-bronze-raw-dev-uscentral1`                 |
+| Dataset BigQuery Bronze        | `medicus_bronze_raw_acumulado` (en `medicus-data-dataml-dev`) |
+| Dataset BigQuery Silver        | `medicus_silver_curated` (en `medicus-data-dataml-dev`)  |
+| Job Dataflow bronze→silver     | `df-bronze-to-silver-dev`                                |
+| Región                         | `us-central1`                                            |
+| Formato archivos Bronze        | `Parquet` (optimizado para almacenamiento y consultas)   |
+
+**Nota:** El entorno dev utiliza el proyecto `medicus-data-dataml-dev` que sigue el patrón `medicus-data-<entorno>`, con recursos alineados a las convenciones de nomenclatura establecidas.
 
 ## Próximos pasos sugeridos
 

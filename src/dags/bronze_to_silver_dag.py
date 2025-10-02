@@ -3,10 +3,16 @@ from airflow.providers.google.cloud.operators.dataflow import DataflowCreatePyth
 from airflow.providers.google.cloud.sensors.gcs import GCSObjectsWithPrefixExistenceSensor
 from airflow.utils.dates import days_ago
 
-PROJECT_ID = "analitica-de-conversaciones"
-GCS_BUCKET = "avlab-bronze-raw"
+# Configuración del entorno dev según nomenclatura-gcp.md
+# PROJECT_ID siguiendo patrón medicus-data-<entorno>
+PROJECT_ID = "medicus-data-dataml-dev"
+# GCS_BUCKET sin prefijo gs:// para el sensor
+# Convención: medicus-data-bronze-raw-dev-uscentral1
+GCS_BUCKET = "medicus-data-bronze-raw-dev-uscentral1"
+# GCS_PREFIX apuntando a directorio raw/ donde se depositan archivos Parquet
 GCS_PREFIX = "raw/"
-DATAFLOW_PY_FILE = "gs://avlab-bronze-raw/code/pipeline_bronze_to_silver.py"
+# DATAFLOW_PY_FILE ubicado en el bucket de Bronze para código de pipelines
+DATAFLOW_PY_FILE = "gs://medicus-data-bronze-raw-dev-uscentral1/code/pipeline_bronze_to_silver.py"
 REGION = "us-central1"
 
 default_args = {
@@ -19,7 +25,8 @@ with models.DAG(
     default_args=default_args,
     catchup=False,
     max_active_runs=1,
-    tags=['bronze', 'silver', 'dataflow'],
+    # Tags actualizados para reflejar que procesamos Parquet en entorno dev
+    tags=['bronze', 'silver', 'dataflow', 'parquet', 'dev'],
 ) as dag:
 
     wait_for_files = GCSObjectsWithPrefixExistenceSensor(
@@ -36,8 +43,10 @@ with models.DAG(
         py_file=DATAFLOW_PY_FILE,
         location=REGION,
         project_id=PROJECT_ID,
-        job_name="bronze-to-silver-{{ ds_nodash }}",
-        # options={"input": f"gs://{GCS_BUCKET}/{GCS_PREFIX}*.csv"}
+        # Job name siguiendo convención: df-<pipeline>-<dominio>-<entorno>-{{ ds_nodash }}
+        job_name="df-bronze-to-silver-dev-{{ ds_nodash }}",
+        # Nota: El input está configurado dentro del script pipeline_bronze_to_silver.py
+        # Archivos Parquet desde gs://medicus-data-bronze-raw-dev-uscentral1/raw/*.parquet
     )
 
     wait_for_files >> run_dataflow
