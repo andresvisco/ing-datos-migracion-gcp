@@ -33,16 +33,20 @@ def validar_etiquetas(labels: Dict[str, str]) -> List[str]:
     return errores
 
 if __name__ == "__main__":
-    # Ejemplo de uso
-    nombre_bucket = "medicus-data-raw-cli-prod-us"
+    # Ejemplos de validación con recursos del entorno dev
+    # Siguiendo la guía de nomenclatura-gcp.md
+    
+    # Validar bucket Bronze Raw del entorno dev
+    nombre_bucket = "medicus-data-bronze-raw-dev-uscentral1"
     es_valido, motivo = validar_nombre_recurso(nombre_bucket, "bucket", 63)
-    logging.info(f"Validación bucket: {es_valido}, {motivo}")
+    logging.info(f"Validación bucket Bronze dev: {es_valido}, {motivo}")
 
+    # Ejemplo de etiquetas para recursos del entorno dev
     etiquetas = {
         "project": "ing-datos-migracion-gcp",
         "business_unit": "medicus-data",
-        "environment": "prod",
-        "domain": "cli",
+        "environment": "dev",  # Entorno de desarrollo
+        "domain": "bronze",     # Dominio de datos Bronze Raw
         "managed_by": "terraform",
         "owner": "data-platform"
     }
