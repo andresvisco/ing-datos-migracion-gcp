@@ -6,11 +6,22 @@
     - Importá el módulo `medicus_naming` desde `terraform/modules/`.
     - Usá variables dinámicas en tu pipeline (`var.dominio`, `var.entorno`, etc.).
     - Todos los recursos tendrán nomenclatura y etiquetas correctas por defecto.
+    - **Ejemplo dev:** Variables para crear bucket Bronze en entorno dev:
+      ```hcl
+      empresa    = "medicus"
+      plataforma = "data"
+      dominio    = "bronze"
+      componente = "raw"
+      entorno    = "dev"
+      region     = "uscentral1"
+      ```
+      Resultado: `medicus-data-bronze-raw-dev-uscentral1`
 
 2. **Python Validator**
     - Ejecutá `tools/validate_nomenclatura.py` antes del `terraform apply`.
     - Integra el script en `.gitlab-ci.yml` o tu pipeline de CI/CD.
     - Si hay errores, el pipeline falla y previene despliegues incorrectos.
+    - El validador incluye ejemplos del entorno dev actualizado.
 
 ## Ejemplo de integración en CI/CD (GitLab)
 
@@ -47,6 +58,7 @@ terraform_deploy:
 - Documentá todos los dominios y owners en un archivo `matriz_nomenclatura.md`.
 - Usá pruebas unitarias para el validador Python (`pytest`).
 - Validá siempre con equipos de seguridad y compliance.
+- **Formato de datos Bronze:** Recordá que todos los archivos en capa Bronze deben estar en formato **Parquet** (no CSV), según estándar definido.
 
 ---
 
