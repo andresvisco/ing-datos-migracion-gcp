@@ -20,7 +20,7 @@ El proyecto se despliega y opera exclusivamente en **Google Cloud Platform (GCP)
 | Categoría | Servicio / Tecnología | Propósito Principal |
 | :--- | :--- | :--- |
 | **Orquestación** | **Composer** (Apache Airflow) | Gestión, scheduling y monitoreo de los Data Pipelines (DAGs). |
-| **Ingesta / RAW** | **Cloud Storage** (Bronze Zone) | Almacenamiento de datos crudos (RAW) en formatos **Parquet/Avro**. |
+| **Ingesta / RAW** | **Cloud Storage** (Bronze Zone) | Almacenamiento de datos crudos (RAW) en formato **Parquet** (estándar Bronze). |
 | **Procesamiento** | **Dataflow** / **Spark** | Transformación de datos ETL/ELT, limpieza y enriquecimiento. |
 | **Data Warehouse** | **BigQuery** (Silver & Gold Zones) | Almacenamiento optimizado para el consumo, analítica y reporting. |
 | **Calidad de Datos**| **Great Expectations** | Implementación de validaciones de calidad de datos en la zona Bronze. |
@@ -60,16 +60,18 @@ medicus-data-platform/
 ### 🥉 Bronze Raw Landing Zone
 
 * **Función:** Ingesta de datos crudos *tal cual* (RAW) desde las fuentes (`MEDICUS Source`).
-* **Proceso Clave:** **Dataflow** escribe el *raw data* en Cloud Storage (Parquet/Avro).
+* **Proceso Clave:** **Dataflow** escribe el *raw data* en Cloud Storage en formato **Parquet** (estándar para capa Bronze).
 * **Calidad:** Se aplica **`Great Expectations`** para validar la *integridad básica* (ej. esquema, no-nulos) *antes* del procesamiento.
-* **Salida:** Datos crudos y validados en **Cloud Storage (GCS)**.
+* **Salida:** Datos crudos y validados en **Cloud Storage (GCS)** en formato **Parquet**.
+* **Ejemplo Dev:** `gs://medicus-data-bronze-raw-dev-uscentral1/raw/*.parquet`
 
 ### 🥈 Silver Procesado Curado
 
 * **Función:** Limpieza, enriquecimiento y aplicación de lógica de negocio inicial.
-* **Proceso Clave:** **Dataflow** realiza la **Transformación** (ETL/ELT) para curar y homogeneizar los datos.
+* **Proceso Clave:** **Dataflow** realiza la **Transformación** (ETL/ELT) para curar y homogeneizar los datos, leyendo archivos **Parquet** desde Bronze.
 * **Salida:** Tablas limpias y curadas en **BigQuery** (`Tablas silver`).
 * **Calidad:** Aplicación de chequeos de `Calidad Curado` post-transformación.
+* **Ejemplo Dev:** Dataset `medicus-data-dataml-dev.medicus_bronze_raw_acumulado`
 
 ### 🥇 Gold Analítica y Reporting
 
@@ -88,6 +90,23 @@ Se han incorporado componentes de gobernanza esenciales:
 * **Metadatos y Linaje:** Uso de **Data Catalog** para trazar el linaje de los datos desde la fuente (Bronze) hasta el consumo (Gold).
 * **Seguridad y Auditoría (IAM, PII):** Aplicación de políticas de **IAM** (Identity and Access Management) y controles de acceso basados en roles. Monitoreo constante a través de **Cloud Logging**.
 * **Logging & Monitoring:** Integrado en todas las zonas (Bronze, Silver, Gold) para asegurar la trazabilidad operativa de los pipelines.
+
+---
+
+## 🔧 Configuración de Entorno Dev
+
+La configuración del entorno de desarrollo (`dev`) sigue estrictamente la guía de nomenclatura (ver `Documentacion/nomenclatura-gcp.md`):
+
+| Recurso | Valor Dev | Descripción |
+|---------|-----------|-------------|
+| **PROJECT_ID** | `medicus-data-dataml-dev` | Proyecto GCP para entorno dev |
+| **BUCKET_BRONZE** | `medicus-data-bronze-raw-dev-uscentral1` | Bucket para datos raw en formato Parquet |
+| **BigQuery Instance** | `medicus-data-dataml-dev` | Instancia de BigQuery para dev |
+| **Dataset Bronze** | `medicus-data-dataml-dev.medicus_bronze_raw_acumulado` | Dataset para datos acumulados Bronze |
+| **Formato Bronze** | **Parquet** | Formato estándar para archivos en capa Bronze |
+| **Región** | `us-central1` | Región principal para recursos dev |
+
+> **Nota importante:** Los archivos en la capa Bronze se almacenan en formato **Parquet**, no CSV. Todos los pipelines de lectura deben usar `ReadFromParquet` en Apache Beam.
 
 ---
 
