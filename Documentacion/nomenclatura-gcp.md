@@ -44,6 +44,30 @@ Aplicar etiquetas (`labels`) comunes en los recursos que lo permitan:
 
 Reglas: los buckets son globales, validar unicidad y longitud. Para `region`, usar código corto (`us`, `us-central1`, `sa-east1`) según necesidad.
 
+### Formato de archivos en Cloud Storage
+
+**Formato principal: Parquet**
+
+Para la zona Bronze, el formato estándar es **Parquet** debido a sus ventajas:
+
+- **Compresión columnar**: Reduce el tamaño de almacenamiento significativamente.
+- **Lectura eficiente**: BigQuery y Dataflow pueden leer solo las columnas necesarias.
+- **Preservación de tipos**: Mantiene tipos de datos nativos (int, float, timestamp, etc.).
+- **Compatibilidad**: Soporte nativo en todo el stack GCP (BigQuery, Dataflow, Spark).
+
+**Convenciones de nombres de archivos Parquet:**
+
+- Usar particionamiento por fecha cuando sea posible: `fecha=YYYY-MM-DD/data.parquet`
+- Incluir prefijo descriptivo: `{source_system}_{tabla}_{timestamp}.parquet`
+- Ejemplo: `qlikview_clientes_20240115_120000.parquet`
+
+**Formato alternativo: Avro**
+
+Usar Avro solo cuando:
+- Se requiera evolución de esquema dinámica
+- Los datos provengan de streaming (Pub/Sub, Kafka)
+- Exista compatibilidad legacy con sistemas existentes
+
 ## BigQuery
 
 - **Datasets por capa**: `medicus_<layer>_<dominio>_<entorno>` → ej. `medicus_bronze_cli_prod`
@@ -113,8 +137,106 @@ Para un pipeline que ingiere información de clientes (dominio `cli`) desde sist
 | Service account Dataflow       | `sa-df-cli-prod@medicus-data-prod.iam.gserviceaccount.com` |
 | Composer environment           | `cmp-data-prod`                                          |
 
+## Ejemplo configuración entorno DEV
+
+Configuración del entorno de desarrollo con datos exportados desde QlikView en formato Parquet:
+
+| Recurso                        | Nombre utilizado                                         | Notas                                    |
+|--------------------------------|----------------------------------------------------------|------------------------------------------|
+| **Proyecto GCP**               | `medicus-data-dataml-dev`                                | Proyecto principal del entorno dev       |
+| **Bucket Bronze (RAW)**        | `medicus-data-bronze-raw-dev-uscentral1`                 | Almacena archivos Parquet de QlikView    |
+| **Dataset BigQuery Bronze**    | `medicus_bronze_raw_acumulado`                           | Dataset acumulado en proyecto dev        |
+| **Dataset completo**           | `medicus-data-dataml-dev.medicus_bronze_raw_acumulado`   | Referencia completa para consultas       |
+| **Formato de archivos**        | **Parquet**                                              | Optimizado para BigQuery y Dataflow      |
+| **Job Dataflow ingesta**       | `df-qlikview-to-bronze-dev`                              | Pipeline de ingesta desde QlikView       |
+| **Service Account Dataflow**   | `sa-df-bronze-dev@medicus-data-dataml-dev.iam.gserviceaccount.com` | SA para pipelines de Bronze      |
+| **Composer environment**       | `cmp-data-dev`                                           | Orquestador Airflow para dev             |
+| **Bucket Composer**            | `medicus-data-cmp-dev-uscentral1`                        | Bucket asociado a Composer               |
+
+### Estructura de archivos en Bronze (DEV)
+
+Los archivos Parquet exportados desde QlikView se organizan en el bucket Bronze siguiendo esta estructura:
+
+```
+gs://medicus-data-bronze-raw-dev-uscentral1/
+├── qlikview_exports/
+│   ├── tabla1/
+│   │   ├── fecha=2024-01-01/
+│   │   │   └── data.parquet
+│   │   └── fecha=2024-01-02/
+│   │       └── data.parquet
+│   ├── tabla2/
+│   │   └── fecha=2024-01-01/
+│   │       └── data.parquet
+│   └── _metadata/
+│       └── export_log.json
+└── staging/
+    └── temp/
+```
+
+### Etiquetas aplicadas en DEV
+
+Todos los recursos del entorno dev incluyen las siguientes etiquetas para gobernanza:
+
+```yaml
+labels:
+  project: "ing-datos-migracion-gcp"
+  business_unit: "medicus-data"
+  environment: "dev"
+  domain: "bronze-raw"
+  managed_by: "terraform"
+  owner: "data-platform"
+  data_format: "parquet"
+  source_system: "qlikview"
+```
+
 ## Próximos pasos sugeridos
 
-1. Validar con seguridad, networking y compliance para detectar restricciones adicionales (nombres reservados, longitud).
-2. Incorporar la convención en los módulos Terraform y plantillas CI/CD.
-3. Mantener una matriz de dominios y owners para asegurar consistencia al crear nuevos recursos.
+1. **Validación y Compliance**: Validar con seguridad, networking y compliance para detectar restricciones adicionales (nombres reservados, longitud).
+2. **Integración con Terraform**: Incorporar la convención en los módulos Terraform y plantillas CI/CD para garantizar automatización completa.
+3. **Matriz de Dominios**: Mantener una matriz de dominios y owners para asegurar consistencia al crear nuevos recursos.
+4. **Validación Automatizada**: Ejecutar `validate_nomenclatura.py` en todos los pipelines CI/CD antes de despliegues.
+5. **Documentación de Linaje**: Registrar todos los flujos de datos en Data Catalog para trazabilidad completa.
+6. **Auditoría Regular**: Revisar trimestralmente el cumplimiento de nomenclatura en todos los recursos existentes.
+7. **Capacitación del Equipo**: Asegurar que todos los miembros del equipo conozcan y apliquen estas convenciones.
+
+## Principios de Gobernanza
+
+### Máximos Estándares de Calidad
+
+Todas las nomenclaturas y recursos deben cumplir con:
+
+- ✅ **Consistencia**: Mismas reglas en dev, qa y prod
+- ✅ **Trazabilidad**: Nombres que permitan identificar propósito, dominio y entorno
+- ✅ **Automatización**: Validación en CI/CD para prevenir errores
+- ✅ **Modularidad**: Estructura que facilite reutilización y mantenimiento
+- ✅ **Documentación**: Cada recurso debe tener propósito y owner claramente definidos
+- ✅ **Seguridad**: Nomenclatura que facilite aplicación de políticas IAM granulares
+
+### Etiquetas Obligatorias para Gobernanza
+
+Todos los recursos GCP **deben** incluir estas etiquetas sin excepción:
+
+| Etiqueta | Obligatoria | Valores Permitidos | Propósito |
+|----------|-------------|-------------------|-----------|
+| `project` | ✅ Sí | `ing-datos-migracion-gcp` | Identificación del proyecto paraguas |
+| `business_unit` | ✅ Sí | `medicus-data` | Unidad de negocio responsable |
+| `environment` | ✅ Sí | `dev`, `qa`, `prod` | Entorno de despliegue |
+| `domain` | ✅ Sí | `cli`, `fin`, `opr`, etc. | Dominio funcional de datos |
+| `managed_by` | ✅ Sí | `terraform`, `manual` | Método de gestión del recurso |
+| `owner` | ✅ Sí | `data-platform`, `{team}` | Equipo propietario |
+| `data_format` | 🔶 Condicional | `parquet`, `avro`, `json` | Formato de datos (para buckets/datasets) |
+| `source_system` | 🔶 Condicional | `qlikview`, `sap`, etc. | Sistema fuente (para pipelines de ingesta) |
+| `cost_center` | 🔶 Opcional | Código de centro de costos | Para facturación detallada |
+
+### Checklist de Validación
+
+Antes de crear cualquier recurso GCP, verificar:
+
+- [ ] El nombre cumple con el patrón `<empresa>-<plataforma>-<dominio>-<componente>-<entorno>-<region>`
+- [ ] La longitud del nombre está dentro de los límites del servicio
+- [ ] Se usan solo minúsculas y guiones (no guiones bajos ni mayúsculas)
+- [ ] Todas las etiquetas obligatorias están presentes
+- [ ] El recurso está documentado en el Data Catalog (si aplica)
+- [ ] Existe un owner claramente identificado
+- [ ] El recurso se crea vía Terraform (preferido) o está documentado si es manual

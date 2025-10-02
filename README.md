@@ -20,7 +20,7 @@ El proyecto se despliega y opera exclusivamente en **Google Cloud Platform (GCP)
 | Categoría | Servicio / Tecnología | Propósito Principal |
 | :--- | :--- | :--- |
 | **Orquestación** | **Composer** (Apache Airflow) | Gestión, scheduling y monitoreo de los Data Pipelines (DAGs). |
-| **Ingesta / RAW** | **Cloud Storage** (Bronze Zone) | Almacenamiento de datos crudos (RAW) en formatos **Parquet/Avro**. |
+| **Ingesta / RAW** | **Cloud Storage** (Bronze Zone) | Almacenamiento de datos crudos (RAW) en formato **Parquet** (principal) y Avro. |
 | **Procesamiento** | **Dataflow** / **Spark** | Transformación de datos ETL/ELT, limpieza y enriquecimiento. |
 | **Data Warehouse** | **BigQuery** (Silver & Gold Zones) | Almacenamiento optimizado para el consumo, analítica y reporting. |
 | **Calidad de Datos**| **Great Expectations** | Implementación de validaciones de calidad de datos en la zona Bronze. |
@@ -59,10 +59,12 @@ medicus-data-platform/
 
 ### 🥉 Bronze Raw Landing Zone
 
-* **Función:** Ingesta de datos crudos *tal cual* (RAW) desde las fuentes (`MEDICUS Source`).
-* **Proceso Clave:** **Dataflow** escribe el *raw data* en Cloud Storage (Parquet/Avro).
-* **Calidad:** Se aplica **`Great Expectations`** para validar la *integridad básica* (ej. esquema, no-nulos) *antes* del procesamiento.
-* **Salida:** Datos crudos y validados en **Cloud Storage (GCS)**.
+* **Función:** Ingesta de datos crudos *tal cual* (RAW) desde las fuentes (`MEDICUS Source`), incluyendo exportaciones desde **QlikView**.
+* **Proceso Clave:** **Dataflow** escribe el *raw data* en Cloud Storage en formato **Parquet** (formato principal, con soporte para Avro cuando sea necesario).
+* **Formato Estándar:** **Parquet** - Formato columnar optimizado que ofrece compresión eficiente, lectura selectiva y compatibilidad nativa con BigQuery y Dataflow.
+* **Calidad:** Se aplica **`Great Expectations`** para validar la *integridad básica* (ej. esquema, no-nulos, tipos de datos) *antes* del procesamiento.
+* **Salida:** Datos crudos y validados en **Cloud Storage (GCS)** listos para transformación a Silver.
+* **Ejemplo DEV:** `gs://medicus-data-bronze-raw-dev-uscentral1/qlikview_exports/*.parquet`
 
 ### 🥈 Silver Procesado Curado
 
@@ -82,12 +84,60 @@ medicus-data-platform/
 
 ## 🔒 Gobernanza y Control
 
-Se han incorporado componentes de gobernanza esenciales:
+Se han incorporado componentes de gobernanza esenciales para cumplir con los **máximos estándares de calidad, trazabilidad y modularidad**:
 
-* **Versionado de Datos:** Implementación de estrategias de *versionado* a nivel de *schema* y *data* para la auditabilidad.
-* **Metadatos y Linaje:** Uso de **Data Catalog** para trazar el linaje de los datos desde la fuente (Bronze) hasta el consumo (Gold).
+* **Nomenclatura Estandarizada:** Convenciones rigurosas para nombres de recursos, datasets y buckets siguiendo la guía `nomenclatura-gcp.md`.
+* **Etiquetado Obligatorio:** Todos los recursos GCP incluyen etiquetas (`labels`) para trazabilidad: `project`, `business_unit`, `environment`, `domain`, `managed_by`, `owner`.
+* **Versionado de Datos:** Implementación de estrategias de *versionado* a nivel de *schema* y *data* para la auditabilidad y reproducibilidad.
+* **Metadatos y Linaje:** Uso de **Data Catalog** para trazar el linaje de los datos desde la fuente (Bronze) hasta el consumo (Gold), garantizando trazabilidad completa.
 * **Seguridad y Auditoría (IAM, PII):** Aplicación de políticas de **IAM** (Identity and Access Management) y controles de acceso basados en roles. Monitoreo constante a través de **Cloud Logging**.
-* **Logging & Monitoring:** Integrado en todas las zonas (Bronze, Silver, Gold) para asegurar la trazabilidad operativa de los pipelines.
+* **Logging & Monitoring:** Integrado en todas las zonas (Bronze, Silver, Gold) para asegurar la trazabilidad operativa de los pipelines y facilitar la depuración.
+* **Modularidad:** Arquitectura basada en módulos Terraform reutilizables que garantizan consistencia y facilitan el mantenimiento.
+* **Validación Automatizada:** Scripts de validación de nomenclatura (`validate_nomenclatura.py`) integrados en CI/CD para prevenir despliegues no conformes.
+
+### 📋 Estándares de Calidad
+
+Todos los recursos y procesos siguen estos principios:
+
+1. **Consistency**: Nomenclatura uniforme en todos los entornos (dev, qa, prod).
+2. **Traceability**: Linaje completo de datos desde ingesta hasta consumo.
+3. **Security**: Principio de privilegio mínimo y encriptación end-to-end.
+4. **Maintainability**: Código modular, documentado y versionado.
+5. **Scalability**: Diseño que permite crecimiento horizontal sin refactorización mayor.
+
+---
+
+## 🔧 Configuración del Entorno de Desarrollo (DEV)
+
+El entorno de desarrollo (`dev`) se encuentra configurado con los siguientes parámetros de infraestructura:
+
+| Parámetro | Valor | Descripción |
+|-----------|-------|-------------|
+| **PROJECT_ID** | `medicus-data-dataml-dev` | Proyecto GCP para el entorno de desarrollo |
+| **BUCKET_BRONZE** | `medicus-data-bronze-raw-dev-uscentral1` | Bucket de almacenamiento para datos crudos (Bronze Zone) |
+| **BigQuery Instance** | `medicus-data-dataml-dev` | Instancia de BigQuery para procesamiento y análisis |
+| **Dataset Bronze** | `medicus-data-dataml-dev.medicus_bronze_raw_acumulado` | Dataset acumulado de datos crudos en BigQuery |
+| **Formato de Archivos Bronze** | **Parquet** | Archivos exportados desde QlikView en formato Parquet |
+
+### 📊 Flujo de Datos en DEV
+
+Los datos en el entorno de desarrollo siguen este flujo:
+
+1. **Exportación desde QlikView**: Los datos se exportan desde QlikView en formato **Parquet** para optimizar el almacenamiento y rendimiento.
+2. **Ingesta a Bronze Zone**: Los archivos Parquet se cargan al bucket `medicus-data-bronze-raw-dev-uscentral1`.
+3. **Validación de Calidad**: Se ejecutan validaciones con **Great Expectations** sobre los archivos Parquet.
+4. **Carga a BigQuery Bronze**: Los datos validados se cargan al dataset `medicus_bronze_raw_acumulado` en el proyecto `medicus-data-dataml-dev`.
+5. **Transformación a Silver/Gold**: Los pipelines de Dataflow procesan los datos hacia las capas Silver y Gold según las reglas de negocio.
+
+### 🎯 Formato Parquet: Ventajas
+
+El uso de **Parquet** como formato estándar en la zona Bronze ofrece:
+
+- **Compresión eficiente**: Reducción del espacio de almacenamiento hasta 10x comparado con formatos de texto.
+- **Lectura columnar**: Optimización de consultas que acceden solo a columnas específicas.
+- **Compatibilidad**: Integración nativa con BigQuery, Dataflow, Spark y otras herramientas del ecosistema GCP.
+- **Preservación de tipos**: Mantenimiento de la integridad de los tipos de datos originales.
+- **Metadatos embebidos**: Esquema y estadísticas incluidos en el archivo para mejor catalogación.
 
 ---
 
@@ -96,6 +146,7 @@ Se han incorporado componentes de gobernanza esenciales:
 1.  **Configuración de Entorno:**
     * Instalar `gcloud CLI`, `terraform`, y `python v3.x`.
     * Autenticarse con `gcloud auth application-default login`.
+    * Configurar el proyecto por defecto: `gcloud config set project medicus-data-dataml-dev`
 2.  **Despliegue de Infraestructura (Terraform):**
     ```bash
     cd terraform
