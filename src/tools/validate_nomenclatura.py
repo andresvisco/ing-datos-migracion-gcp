@@ -33,16 +33,20 @@ def validar_etiquetas(labels: Dict[str, str]) -> List[str]:
     return errores
 
 if __name__ == "__main__":
-    # Ejemplo de uso
-    nombre_bucket = "medicus-data-raw-cli-prod-us"
+    # Ejemplos de validación usando recursos del entorno dev
+    # Alineado con la nueva configuración: PROJECT_ID medicus-data-dataml-dev
+    
+    # Ejemplo 1: Validar bucket Bronze del entorno dev
+    nombre_bucket = "medicus-data-bronze-raw-dev-uscentral1"
     es_valido, motivo = validar_nombre_recurso(nombre_bucket, "bucket", 63)
-    logging.info(f"Validación bucket: {es_valido}, {motivo}")
+    logging.info(f"Validación bucket Bronze dev: {es_valido}, {motivo}")
 
+    # Ejemplo 2: Etiquetas para entorno dev
     etiquetas = {
         "project": "ing-datos-migracion-gcp",
         "business_unit": "medicus-data",
-        "environment": "prod",
-        "domain": "cli",
+        "environment": "dev",  # Entorno dev
+        "domain": "data",
         "managed_by": "terraform",
         "owner": "data-platform"
     }
@@ -50,4 +54,4 @@ if __name__ == "__main__":
     if errores_labels:
         logging.warning(f"Errores en etiquetas: {errores_labels}")
     else:
-        logging.info("Etiquetas OK")
+        logging.info("Etiquetas OK para entorno dev")

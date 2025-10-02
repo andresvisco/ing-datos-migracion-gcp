@@ -31,12 +31,15 @@ Aplicar etiquetas (`labels`) comunes en los recursos que lo permitan:
 
 ## Proyectos y carpetas
 
-- **Proyectos GCP**: `medicus-data-<entorno>` (por ejemplo `medicus-data-prod`).
+- **Proyectos GCP**: `medicus-data-<entorno>` (por ejemplo `medicus-data-prod`, `medicus-data-dataml-dev`).
 - **Folders (opcional)**: `medicus-data/<entorno>` para organizar políticas IAM y facturación.
+
+> **Nota:** Para el entorno dev actual se usa el proyecto `medicus-data-dataml-dev` que incluye el sufijo `-dataml` para identificar la plataforma de Data/ML.
 
 ## Almacenamiento: Cloud Storage
 
 - **Buckets landing/raw**: `medicus-data-raw-<dominio>-<entorno>-<region>` → ej. `medicus-data-raw-cli-prod-us`
+- **Buckets Bronze (con sufijo de capa)**: `medicus-data-bronze-raw-<entorno>-<region>` → ej. `medicus-data-bronze-raw-dev-uscentral1`
 - **Buckets staging**: `medicus-data-stg-<dominio>-<entorno>-<region>`
 - **Buckets curated/publicados**: `medicus-data-cur-<dominio>-<entorno>-<region>` y `medicus-data-pub-<dominio>-<entorno>-<region>`
 - **Buckets temporales Dataflow**: `medicus-data-df-tmp-<entorno>-<region>`
@@ -44,13 +47,17 @@ Aplicar etiquetas (`labels`) comunes en los recursos que lo permitan:
 
 Reglas: los buckets son globales, validar unicidad y longitud. Para `region`, usar código corto (`us`, `us-central1`, `sa-east1`) según necesidad.
 
+> **Formato de archivos Bronze:** Los datos en la capa Bronze se almacenan en formato **Parquet** (no CSV) para optimizar el rendimiento y compatibilidad con herramientas de Big Data.
+
 ## BigQuery
 
-- **Datasets por capa**: `medicus_<layer>_<dominio>_<entorno>` → ej. `medicus_bronze_cli_prod`
+- **Datasets por capa**: `medicus_<layer>_<dominio>_<entorno>` → ej. `medicus_bronze_cli_prod`, `medicus_bronze_raw_acumulado` (para datos acumulados en dev)
 - **Tablas**: `layer_dom_usuario`, usar `snake_case` (ej. `bronze_cli_historial_visitas`).
 - **Views**: prefijo `vw_` (ej. `vw_cli_resumen_prod`).
 - **Routines/UDFs**: prefijo `fn_`.
-- **Proyectos para analytics** (si se separan): `medicus-bq-<entorno>`.
+- **Proyectos para analytics** (si se separan): `medicus-bq-<entorno>` o `medicus-data-dataml-<entorno>` para entornos con plataforma Data/ML integrada.
+
+> **Ejemplo dev:** El dataset `medicus_bronze_raw_acumulado` en el proyecto `medicus-data-dataml-dev` almacena datos Bronze acumulados para el entorno de desarrollo.
 
 ## Cloud Spanner
 
@@ -96,7 +103,22 @@ Reglas: los buckets son globales, validar unicidad y longitud. Para `region`, us
 - **Logs-based metrics**: `lbm_<dominio>_<proposito>_<entorno>`
 - **Alerting policies**: `alert_<dominio>_<proposito>_<entorno>`
 
-## Ejemplo completo
+## Ejemplo completo: Entorno Dev
+
+Configuración actualizada para el entorno de desarrollo con los recursos confirmados:
+
+| Recurso                        | Nombre/Valor                                             | Notas |
+|--------------------------------|----------------------------------------------------------|-------|
+| Proyecto GCP                   | `medicus-data-dataml-dev`                                | Proyecto para Data/ML en dev |
+| Bucket Bronze                  | `medicus-data-bronze-raw-dev-uscentral1`                 | Almacena archivos Parquet raw |
+| BigQuery Instance              | `medicus-data-dataml-dev`                                | Misma instancia que el proyecto |
+| Dataset Bronze                 | `medicus_bronze_raw_acumulado`                           | Dataset para datos acumulados Bronze |
+| Dataset completo               | `medicus-data-dataml-dev.medicus_bronze_raw_acumulado`   | Referencia completa |
+| Formato archivos Bronze        | **Parquet**                                              | No CSV - estándar para Bronze |
+| Job Dataflow Bronze→Silver     | `df-bronze-to-silver-data-dev`                           | Nomenclatura alineada |
+| Región                         | `us-central1`                                            | Región principal |
+
+## Ejemplo completo: Entorno Prod
 
 Para un pipeline que ingiere información de clientes (dominio `cli`) desde sistemas legacy a capa bronze y luego a silver en `prod`:
 

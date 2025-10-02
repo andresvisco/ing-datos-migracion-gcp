@@ -1,3 +1,17 @@
+# Módulo de nomenclatura MEDICUS para recursos GCP
+# Alineado con Documentacion/nomenclatura-gcp.md
+#
+# Configuración de ejemplo para entorno dev:
+#   empresa = "medicus"
+#   plataforma = "data"
+#   dominio = "bronze" (o según el dominio específico)
+#   componente = "raw"
+#   entorno = "dev"
+#   region = "uscentral1"
+#
+# Resultado ejemplo: medicus-data-bronze-raw-dev-uscentral1
+# Para el proyecto dev actual se usa: medicus-data-dataml-dev
+
 variable "empresa" { type = string }
 variable "plataforma" { type = string }
 variable "dominio" { type = string }
@@ -28,7 +42,9 @@ locals {
   }
 }
 
-# Ejemplo: Bucket de GCS
+# Ejemplo: Bucket de GCS para capa Bronze
+# Configuración dev: medicus-data-bronze-raw-dev-uscentral1
+# Los archivos en Bronze se almacenan en formato Parquet (no CSV)
 resource "google_storage_bucket" "raw" {
   name     = "${local.resource_name}"
   location = var.region
@@ -43,7 +59,8 @@ resource "google_storage_bucket" "raw" {
   }
 }
 
-# Ejemplo: BigQuery Dataset
+# Ejemplo: BigQuery Dataset para capa Bronze
+# Configuración dev: medicus_bronze_raw_acumulado en medicus-data-dataml-dev
 resource "google_bigquery_dataset" "bronze" {
   dataset_id                  = replace("${var.empresa}_${var.componente}_${var.dominio}_${var.entorno}", "-", "_")
   location                    = var.region
@@ -51,7 +68,8 @@ resource "google_bigquery_dataset" "bronze" {
   delete_contents_on_destroy  = true
 }
 
-# Ejemplo: Service Account
+# Ejemplo: Service Account para Dataflow
+# Configuración dev: sa-df-data-dev para pipelines Bronze→Silver
 resource "google_service_account" "df" {
   account_id   = "sa-df-${var.dominio}-${var.entorno}"
   display_name = "Dataflow SA ${var.dominio}-${var.entorno}"
