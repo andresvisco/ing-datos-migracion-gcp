@@ -103,23 +103,6 @@ Reglas: los buckets son globales, validar unicidad y longitud. Para `region`, us
 - **Logs-based metrics**: `lbm_<dominio>_<proposito>_<entorno>`
 - **Alerting policies**: `alert_<dominio>_<proposito>_<entorno>`
 
-## Ejemplo completo
-
-Para un pipeline que ingiere información de clientes (dominio `cli`) desde sistemas legacy a capa bronze y luego a silver en `prod`:
-
-| Recurso                        | Nombre sugerido                                         |
-|--------------------------------|----------------------------------------------------------|
-| Bucket landing                 | `medicus-data-raw-cli-prod-us`                           |
-| Bucket staging                 | `medicus-data-stg-cli-prod-us`                           |
-| Dataset BigQuery bronze        | `medicus_bronze_cli_prod`                                |
-| Dataset BigQuery silver        | `medicus_silver_cli_prod`                                |
-| Job Dataflow bronze→silver     | `df-bronze-to-silver-cli-prod`                           |
-| Topic Pub/Sub eventos cliente  | `ps-cli-alta-socio-prod`                                 |
-| Spanner instance               | `medicus-spn-cli-prod`                                   |
-| Spanner database               | `db_cli_master`                                          |
-| Service account Dataflow       | `sa-df-cli-prod@medicus-data-prod.iam.gserviceaccount.com` |
-| Composer environment           | `cmp-data-prod`                                          |
-
 ## Ejemplo completo: Entorno Dev
 
 Configuración actualizada para el entorno de desarrollo con los recursos confirmados:
@@ -136,6 +119,23 @@ Configuración actualizada para el entorno de desarrollo con los recursos confir
 | Región                         | `us-central1`                                            | Región principal |
 
 ## Ejemplo completo: Entorno Prod
+
+Para un pipeline que ingiere información de clientes (dominio `cli`) desde sistemas legacy a capa bronze y luego a silver en `prod`:
+
+| Recurso                        | Nombre sugerido                                         |
+|--------------------------------|----------------------------------------------------------|
+| Bucket landing                 | `medicus-data-raw-cli-prod-us`                           |
+| Bucket staging                 | `medicus-data-stg-cli-prod-us`                           |
+| Dataset BigQuery bronze        | `medicus_bronze_cli_prod`                                |
+| Dataset BigQuery silver        | `medicus_silver_cli_prod`                                |
+| Job Dataflow bronze→silver     | `df-bronze-to-silver-cli-prod`                           |
+| Topic Pub/Sub eventos cliente  | `ps-cli-alta-socio-prod`                                 |
+| Spanner instance               | `medicus-spn-cli-prod`                                   |
+| Spanner database               | `db_cli_master`                                          |
+| Service account Dataflow       | `sa-df-cli-prod@medicus-data-prod.iam.gserviceaccount.com` |
+| Composer environment           | `cmp-data-prod`                                          |
+
+## Próximos pasos sugeridos
 
 1. Validar con seguridad, networking y compliance para detectar restricciones adicionales (nombres reservados, longitud).
 2. Incorporar la convención en los módulos Terraform y plantillas CI/CD.
